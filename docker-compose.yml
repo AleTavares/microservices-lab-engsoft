@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Bancos de dados PostgreSQL
+  user-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: userservice
+      POSTGRES_PASSWORD: userpass123
+    volumes:
+      - user_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  product-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: productdb
+      POSTGRES_USER: productservice
+      POSTGRES_PASSWORD: productpass123
+    volumes:
+      - product_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  order-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: orderservice
+      POSTGRES_PASSWORD: orderpass123
+    volumes:
+      - order_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+
+  # Microsserviços
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - USER_SERVICE_URL=http://user-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://userservice:userpass123@user-db:5432/userdb
+    depends_on:
+      - user-db
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - DATABASE_URL=postgresql://productservice:productpass123@product-db:5432/productdb
+    depends_on:
+      - product-db
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - USER_SERVICE_URL=http://user-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - DATABASE_URL=postgresql://orderservice:orderpass123@order-db:5432/orderdb
+    depends_on:
+      - order-db
+
+volumes:
+  user_data:
+  product_data:
+  order_data:
